@@ -8,6 +8,16 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include Utilities/sequencer/subdir.mk
+-include Utilities/lpm/tiny_lpm/subdir.mk
+-include STM32_WPAN/Target/subdir.mk
+-include STM32_WPAN/App/subdir.mk
+-include Middlewares/ST/STM32_WPAN/utilities/subdir.mk
+-include Middlewares/ST/STM32_WPAN/interface/patterns/ble_thread/tl/subdir.mk
+-include Middlewares/ST/STM32_WPAN/interface/patterns/ble_thread/shci/subdir.mk
+-include Middlewares/ST/STM32_WPAN/ble/svc/Src/subdir.mk
+-include Middlewares/ST/STM32_WPAN/ble/core/template/subdir.mk
+-include Middlewares/ST/STM32_WPAN/ble/core/auto/subdir.mk
 -include Drivers/STM32WBxx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
@@ -15,18 +25,6 @@ RM := rm -rf
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(strip $(CC_DEPS)),)
--include $(CC_DEPS)
-endif
-ifneq ($(strip $(C++_DEPS)),)
--include $(C++_DEPS)
-endif
-ifneq ($(strip $(C_UPPER_DEPS)),)
--include $(C_UPPER_DEPS)
-endif
-ifneq ($(strip $(CXX_DEPS)),)
--include $(CXX_DEPS)
-endif
 ifneq ($(strip $(S_DEPS)),)
 -include $(S_DEPS)
 endif
@@ -35,9 +33,6 @@ ifneq ($(strip $(S_UPPER_DEPS)),)
 endif
 ifneq ($(strip $(C_DEPS)),)
 -include $(C_DEPS)
-endif
-ifneq ($(strip $(CPP_DEPS)),)
--include $(CPP_DEPS)
 endif
 endif
 
@@ -61,8 +56,8 @@ FinalTest.bin \
 all: FinalTest.elf secondary-outputs
 
 # Tool invocations
-FinalTest.elf: $(OBJS) $(USER_OBJS) D:\Downloads\STCubeIDE\Workspace\FinalTest\STM32WB55RGVX_FLASH.ld
-	arm-none-eabi-g++ -o "FinalTest.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\Downloads\STCubeIDE\Workspace\FinalTest\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="FinalTest.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+FinalTest.elf: $(OBJS) $(USER_OBJS) D:\tmp\pfe\testNucleo\STM32WB55RGVX_FLASH.ld
+	arm-none-eabi-gcc -o "FinalTest.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\tmp\pfe\testNucleo\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="FinalTest.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

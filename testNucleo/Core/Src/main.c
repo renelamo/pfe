@@ -19,6 +19,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "app_entry.h"
+#include "app_common.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -43,6 +45,8 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+RTC_HandleTypeDef hrtc;
+
 UART_HandleTypeDef huart1;
 
 PCD_HandleTypeDef hpcd_USB_FS;
@@ -57,8 +61,11 @@ static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USB_PCD_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_RF_Init(void);
+static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 int32_t BME280_compensate_T(int32_t adc_T);
+void HAL_Delay(uint32_t Delay);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -76,7 +83,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	uint8_t bufUart[20];
-	uint8_t buf[12]; //reception buffer
+	uint8_t bufI2C[12];
 	int32_t adc_T;
 	int32_t temperature;
   /* USER CODE END 1 */
@@ -102,58 +109,60 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USB_PCD_Init();
   MX_I2C1_Init();
+  MX_RF_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-  buf[0] = 0xD0; // "id" register
-  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, buf, 1, HAL_MAX_DELAY); //send 1 byte
-  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, buf, 1, HAL_MAX_DELAY); //receive 1 byte
-  HAL_UART_Transmit(&huart1, buf, strlen((char*)buf), HAL_MAX_DELAY);
+  bufI2C[0] = 0xD0; // "id" register
+  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //send 1 byte
+  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //receive 1 byte
+  HAL_UART_Transmit(&huart1, bufI2C, strlen((char*)bufI2C), HAL_MAX_DELAY);
 
-  if(buf[0] != 0x60){ // if the device id does not match expected
+  if(bufI2C[0] != 0x60){ // if the device id does not match expected
   	  Error_Handler();
   }
 
-  buf[0] = 0xF4; // "ctrl_meas" register
-  buf[1] = 0b001 << 5 | 0b11; // oversampling = 1 for temperature, normal mode
-  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, buf, 2, HAL_MAX_DELAY); //send 2 bytes
+  bufI2C[0] = 0xF4; // "ctrl_meas" register
+  bufI2C[1] = 0b001 << 5 | 0b11; // oversampling = 1 for temperature, normal mode
+  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 2, HAL_MAX_DELAY); //send 2 bytes
 
-  buf[0] = 0xF5; // "config" register
-  buf[1] = 0b100 << 5; // 1 measure every 500ms
-  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, buf, 2, HAL_MAX_DELAY); //send 2 bytes
+  bufI2C[0] = 0xF5; // "config" register
+  bufI2C[1] = 0b100 << 5; // 1 measure every 500ms
+  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 2, HAL_MAX_DELAY); //send 2 bytes
 
-  buf[0] = 0x88; // "dig_Tx" registers
-  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, buf, 1, HAL_MAX_DELAY); //send 1 bytes
+  bufI2C[0] = 0x88; // "dig_Tx" registers
+  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //send 1 bytes
 
-  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, buf, 6, HAL_MAX_DELAY); //receive 6 bytes
-  dig_T1 = buf[0] | (uint16_t)buf[1] << 8;
-  dig_T2 = buf[2] | (uint16_t)buf[3] << 8;
-  dig_T3 = buf[4] | (uint16_t)buf[5] << 8;
+  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 6, HAL_MAX_DELAY); //receive 6 bytes
+  dig_T1 = bufI2C[0] | (uint16_t)bufI2C[1] << 8;
+  dig_T2 = bufI2C[2] | (uint16_t)bufI2C[3] << 8;
+  dig_T3 = bufI2C[4] | (uint16_t)bufI2C[5] << 8;
 
   strcpy((char*)bufUart, "INIT COMPLETED\r\n");
   HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
   /* USER CODE END 2 */
 
-
+  /* Init code for STM32_WPAN */
+  // APPE_Init(); //FIXME: breaks timers, notably for HAL_Delay & I2C comm.
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
 	  //HAL_UART_Transmit(&huart1, "UnTourDePlus\r\n", 16, 50);
 	  //HAL_UART_Transmit(&huart1, buf, 11, HAL_MAX_DELAY);
 	  //HAL_UART_Transmit(&huart1, buf, strlen((char*)buf), HAL_MAX_DELAY);
-	  HAL_Delay(2000);
+	  HAL_Delay(500);
 
-	  buf[0] = 0xFA; // temperature MSB register
-	  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, buf, 1, HAL_MAX_DELAY); // send 1 byte
-	  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, buf, 3, HAL_MAX_DELAY); // receive 3 bytes
+	  bufI2C[0] = 0xFA; // temperature MSB register
+	  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); // send 1 byte
+	  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 3, HAL_MAX_DELAY); // receive 3 bytes
 
-	  adc_T = (int32_t)buf[0] << 12 | (int32_t)buf[1] << 4 | buf[2] >> 4;
+	  adc_T = (int32_t)bufI2C[0] << 12 | (int32_t)bufI2C[1] << 4 | bufI2C[2] >> 4;
 	  temperature = BME280_compensate_T(adc_T);
-	  sprintf(bufUart, "%ld\r\n", temperature);
+	  sprintf(bufUart, "%.2f\r\n", temperature/100.0);
 	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
 
 
-	  if(temperature < 2000) { // if T < 20°C
+	  if(temperature < 2500) { // if T < 25°C
 		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
 	  } else {
 		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
@@ -192,8 +201,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
-                              |RCC_OSCILLATORTYPE_LSE|RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI1
+                              |RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE
+                              |RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -201,6 +211,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.MSICalibrationValue = RCC_MSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -224,7 +235,8 @@ void SystemClock_Config(void)
   }
   /** Initializes the peripherals clocks
   */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_USART1
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
+                              |RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
                               |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_USB;
   PeriphClkInitStruct.PLLSAI1.PLLN = 24;
   PeriphClkInitStruct.PLLSAI1.PLLP = RCC_PLLP_DIV2;
@@ -234,6 +246,8 @@ void SystemClock_Config(void)
   PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
   PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
   PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_PLLSAI1;
+  PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
+  PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_HSE_DIV1024;
   PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
   PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE0;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
@@ -291,6 +305,62 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief RF Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RF_Init(void)
+{
+
+  /* USER CODE BEGIN RF_Init 0 */
+
+  /* USER CODE END RF_Init 0 */
+
+  /* USER CODE BEGIN RF_Init 1 */
+
+  /* USER CODE END RF_Init 1 */
+  /* USER CODE BEGIN RF_Init 2 */
+
+  /* USER CODE END RF_Init 2 */
+
+}
+
+/**
+  * @brief RTC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RTC_Init(void)
+{
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+  /** Initialize RTC Only
+  */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = CFG_RTC_ASYNCH_PRESCALER;
+  hrtc.Init.SynchPrediv = CFG_RTC_SYNCH_PRESCALER;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 
 }
 
@@ -423,6 +493,40 @@ int32_t BME280_compensate_T(int32_t adc_T){
 	t_fine = var1+var2;
 	T = (t_fine *5 + 128) >> 8;
 	return T;
+}
+
+/*************************************************************
+ *
+ * WRAP FUNCTIONS
+ *
+ *************************************************************/
+void HAL_Delay(uint32_t Delay)
+{
+  uint32_t tickstart = HAL_GetTick();
+  uint32_t wait = Delay;
+
+  /* Add a freq to guarantee minimum wait */
+  if (wait < HAL_MAX_DELAY)
+  {
+    wait += HAL_GetTickFreq();
+  }
+
+  while ((HAL_GetTick() - tickstart) < wait)
+  {
+    /************************************************************************************
+     * ENTER SLEEP MODE
+     ***********************************************************************************/
+    LL_LPM_EnableSleep( ); /**< Clear SLEEPDEEP bit of Cortex System Control Register */
+
+    /**
+     * This option is used to ensure that store operations are completed
+     */
+  #if defined ( __CC_ARM)
+    __force_stores();
+  #endif
+
+    __WFI( );
+  }
 }
 /* USER CODE END 4 */
 
