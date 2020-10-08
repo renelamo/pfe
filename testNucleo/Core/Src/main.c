@@ -184,19 +184,19 @@ int main(void)
 	  adc_T = (int32_t)bufI2C[0] << 12 | (int32_t)bufI2C[1] << 4 | bufI2C[2] >> 4;
 
 	  temperature = BME280_compensate_T(adc_T);
-	  sprintf(bufUart, "T=%.2f °C\r\n", temperature/100.0);
+	  sprintf((char*)bufUart, "T=%.2f °C\r\n", temperature/100.0);
 	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
 
 	  pressure = BME280_compensate_P_int64(adc_P);
-	  sprintf(bufUart, "P=%.3f hPa\r\n", pressure/256.0/100.0);
+	  sprintf((char*)bufUart, "P=%.3f hPa\r\n", pressure/256.0/100.0);
 	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
 
 	  if(temperature < 2500) { // if T < 25°C
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+		  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
 	  } else {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+		  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
 	  }
-	  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -592,7 +592,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET); // Turn on Red LED
+	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET); // Turn on Red LED
 	while(1);
   /* USER CODE END Error_Handler_Debug */
 }
