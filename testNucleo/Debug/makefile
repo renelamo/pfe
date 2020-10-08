@@ -40,24 +40,24 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-FinalTest.elf \
+testNucleo.elf \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-FinalTest.list \
+testNucleo.list \
 
 OBJCOPY_BIN += \
-FinalTest.bin \
+testNucleo.bin \
 
 
 # All Target
-all: FinalTest.elf secondary-outputs
+all: testNucleo.elf secondary-outputs
 
 # Tool invocations
-FinalTest.elf: $(OBJS) $(USER_OBJS) D:\tmp\pfe\testNucleo\STM32WB55RGVX_FLASH.ld
-	arm-none-eabi-gcc -o "FinalTest.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\tmp\pfe\testNucleo\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="FinalTest.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+testNucleo.elf: $(OBJS) $(USER_OBJS) D:\tmp\pfe\testNucleo\STM32WB55RGVX_FLASH.ld
+	arm-none-eabi-gcc -o "testNucleo.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\tmp\pfe\testNucleo\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="testNucleo.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -66,13 +66,13 @@ default.size.stdout: $(EXECUTABLES)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-FinalTest.list: $(EXECUTABLES)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "FinalTest.list"
+testNucleo.list: $(EXECUTABLES)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "testNucleo.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-FinalTest.bin: $(EXECUTABLES)
-	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "FinalTest.bin"
+testNucleo.bin: $(EXECUTABLES)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "testNucleo.bin"
 	@echo 'Finished building: $@'
 	@echo ' '
 
