@@ -26,11 +26,16 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
+#include "hw_conf.h"
+#include "otp.h"
+#include "ble_gap_aci.h"
+#include "ble_gatt_aci.h"
+#include "BME280.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define BME_ADDR 0b11101100
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -43,8 +48,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
-
 RTC_HandleTypeDef hrtc;
 
 UART_HandleTypeDef huart1;
@@ -64,28 +67,18 @@ static void MX_I2C1_Init(void);
 static void MX_RF_Init(void);
 static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
-int32_t BME280_compensate_T(int32_t);
-uint32_t BME280_compensate_P_int64(int32_t);
 void HAL_Delay(uint32_t);
+void PeriphClock_Config(void);
+static void Reset_Device( void );
+static void Reset_IPCC( void );
+static void Reset_BackupDomain( void );
+static void Init_Exti( void );
+static void Config_HSE(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static int32_t t_fine;
 
-static uint16_t dig_T1;
-static int16_t dig_T2;
-static int16_t dig_T3;
-
-static uint16_t dig_P1;
-static int16_t dig_P2;
-static int16_t dig_P3;
-static int16_t dig_P4;
-static int16_t dig_P5;
-static int16_t dig_P6;
-static int16_t dig_P7;
-static int16_t dig_P8;
-static int16_t dig_P9;
 /* USER CODE END 0 */
 
 /**
@@ -96,11 +89,6 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	uint8_t bufUart[20];
-	uint8_t bufI2C[20];
-	int32_t adc_T;
-	int32_t adc_P;
-	int32_t temperature;
-	uint32_t pressure;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -109,14 +97,16 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  Reset_Device();
+  Config_HSE();
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  PeriphClock_Config();
+  Init_Exti();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -127,76 +117,50 @@ int main(void)
   MX_RF_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-  bufI2C[0] = 0xD0; // "id" register
-  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //send 1 byte
-  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //receive 1 byte
-  HAL_UART_Transmit(&huart1, bufI2C, strlen((char*)bufI2C), HAL_MAX_DELAY);
-
-  if(bufI2C[0] != 0x60){ // if the device id does not match expected
-  	  Error_Handler();
-  }
-
-  bufI2C[0] = 0xF4; // "ctrl_meas" register
-  bufI2C[1] = 0b001 << 5 | 0b001 << 2 | 0b11; // oversampling = 1 for temperature & for pressure, normal mode
-  bufI2C[2] = 0b100 << 5; // 1 measure every 500ms
-  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 3, HAL_MAX_DELAY); //send 3 bytes
-
-  bufI2C[0] = 0x88; // "dig_Tx" registers
-  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //send 1 bytes
-
-  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 6, HAL_MAX_DELAY); //receive 6 bytes
-  dig_T1 = bufI2C[0] | (uint16_t)bufI2C[1] << 8;
-  dig_T2 = bufI2C[2] | (uint16_t)bufI2C[3] << 8;
-  dig_T3 = bufI2C[4] | (uint16_t)bufI2C[5] << 8;
-  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 18, HAL_MAX_DELAY); //receive 18 bytes
-  dig_P1 = bufI2C[0] | (uint16_t)bufI2C[1] << 8;
-  dig_P2 = bufI2C[2] | (uint16_t)bufI2C[3] << 8;
-  dig_P3 = bufI2C[4] | (uint16_t)bufI2C[5] << 8;
-  dig_P4 = bufI2C[6] | (uint16_t)bufI2C[7] << 8;
-  dig_P5 = bufI2C[8] | (uint16_t)bufI2C[9] << 8;
-  dig_P6 = bufI2C[10] | (uint16_t)bufI2C[11] << 8;
-  dig_P7 = bufI2C[12] | (uint16_t)bufI2C[13] << 8;
-  dig_P8 = bufI2C[14] | (uint16_t)bufI2C[15] << 8;
-  dig_P9 = bufI2C[16] | (uint16_t)bufI2C[17] << 8;
+  BME280_init(BME280_OVERSAMPLING_1, BME280_OVERSAMPLING_1, BME280_NORMAL_MODE, BME280_RATE_500_MS);
 
   strcpy((char*)bufUart, "INIT COMPLETED\r\n");
   HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
   /* USER CODE END 2 */
 
   /* Init code for STM32_WPAN */
-  // APPE_Init(); //FIXME: breaks timers, notably for HAL_Delay & I2C comm.
+  //APPE_Init(); //FIXME: breaks timers, notably for HAL_Delay & I2C comm.
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+#if 0
+  aci_gatt_init();
+  uint16_t* serviceh = NULL;
+  uint16_t* nameh = NULL;
+  uint16_t* appearanceh = NULL;
+  aci_gap_init(0x02, 0, 4, serviceh, nameh, appearanceh);
+  aci_gap_set_non_connectable(0x03, 0x01);
+  char* localName = "BROADCASTER";
+  char* services = {0x0};
+  aci_gap_set_discoverable(0x03, 0x0020, 0x0030, 0x01, NULL,
+		  strlen(localName), (uint8_t*)localName,
+		  1, (uint8_t*)services,
+		  0xffff, 0xffff);
+  char* broadcastedData = "HELLOWORLD";
+  aci_gap_set_broadcast_mode(0x00A0, 0x00A1, 0x03, 0x01, strlen(broadcastedData), (uint8_t*)broadcastedData, 0, NULL);
+#endif
   while (1)
   {
-	  //HAL_UART_Transmit(&huart1, "UnTourDePlus\r\n", 16, 50);
-	  //HAL_UART_Transmit(&huart1, buf, 11, HAL_MAX_DELAY);
-	  //HAL_UART_Transmit(&huart1, buf, strlen((char*)buf), HAL_MAX_DELAY);
 	  HAL_Delay(500);
 
-	  bufI2C[0] = 0xF7; // temperature MSB register
-	  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); // send 1 byte
+	  struct BME280_data_t BME_data;
+	  BME280_get_measurements(&BME_data);
 
-	  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 3, HAL_MAX_DELAY); // receive 3 bytes
-	  adc_P = (int32_t)bufI2C[0] << 12 | (int32_t)bufI2C[1] << 4 | bufI2C[2] >> 4;
-
-	  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 3, HAL_MAX_DELAY); // receive 3 bytes
-	  adc_T = (int32_t)bufI2C[0] << 12 | (int32_t)bufI2C[1] << 4 | bufI2C[2] >> 4;
-
-	  temperature = BME280_compensate_T(adc_T);
-	  sprintf((char*)bufUart, "T=%.2f °C\r\n", temperature/100.0);
+	  sprintf((char*)bufUart, "T=%.2f °C\r\n", BME_data.T);
+	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
+	  sprintf((char*)bufUart, "P=%.3f hPa\r\n", BME_data.P);
 	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
 
-	  pressure = BME280_compensate_P_int64(adc_P);
-	  sprintf((char*)bufUart, "P=%.3f hPa\r\n", pressure/256.0/100.0);
-	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
-
-	  if(temperature < 2500) { // if T < 25°C
-		  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+	  if(BME_data.T < 25) { // if T < 25°C
+		  HAL_GPIO_WritePin(LD_Red_Port, LD_Red_Pin, GPIO_PIN_SET);
 	  } else {
-		  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+		  HAL_GPIO_WritePin(LD_Red_Port, LD_Red_Pin, GPIO_PIN_RESET);
 	  }
-	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  HAL_GPIO_TogglePin(LD_Green_Port, LD_Green_Pin);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -490,7 +454,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD2_Pin|LD3_Pin|LD1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LD_Green_Pin|LD_Blue_Pin|LD_Red_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -499,7 +463,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LD2_Pin LD3_Pin LD1_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin|LD3_Pin|LD1_Pin;
+  GPIO_InitStruct.Pin = LD_Green_Pin|LD_Blue_Pin|LD_Red_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -514,39 +478,151 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-// From BME280 datasheet
-int32_t BME280_compensate_T(int32_t adc_T){
-	int32_t var1, var2, T;
-	var1 = ((((adc_T>>3) - ((int32_t)dig_T1<<1))) * ((int32_t)dig_T2))>>11;
-	var2 = (((((adc_T>>4) - ((int32_t)dig_T1)) * ((adc_T>>4) -  ((int32_t)dig_T1))) >> 12) * ((int32_t)dig_T3)) >> 14;
-	t_fine = var1+var2;
-	T = (t_fine *5 + 128) >> 8;
-	return T;
+
+void PeriphClock_Config(void)
+{
+  #if (CFG_USB_INTERFACE_ENABLE != 0)
+	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = { 0 };
+	RCC_CRSInitTypeDef RCC_CRSInitStruct = { 0 };
+
+	/**
+   * This prevents the CPU2 to disable the HSI48 oscillator when
+   * it does not use anymore the RNG IP
+   */
+  LL_HSEM_1StepLock( HSEM, 5 );
+
+  LL_RCC_HSI48_Enable();
+
+	while(!LL_RCC_HSI48_IsReady());
+
+	/* Select HSI48 as USB clock source */
+	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USB;
+	PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
+	HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
+
+	/*Configure the clock recovery system (CRS)**********************************/
+
+	/* Enable CRS Clock */
+	__HAL_RCC_CRS_CLK_ENABLE();
+
+	/* Default Synchro Signal division factor (not divided) */
+	RCC_CRSInitStruct.Prescaler = RCC_CRS_SYNC_DIV1;
+
+	/* Set the SYNCSRC[1:0] bits according to CRS_Source value */
+	RCC_CRSInitStruct.Source = RCC_CRS_SYNC_SOURCE_USB;
+
+	/* HSI48 is synchronized with USB SOF at 1KHz rate */
+	RCC_CRSInitStruct.ReloadValue = RCC_CRS_RELOADVALUE_DEFAULT;
+	RCC_CRSInitStruct.ErrorLimitValue = RCC_CRS_ERRORLIMIT_DEFAULT;
+
+	RCC_CRSInitStruct.Polarity = RCC_CRS_SYNC_POLARITY_RISING;
+
+	/* Set the TRIM[5:0] to the default value*/
+	RCC_CRSInitStruct.HSI48CalibrationValue = RCC_CRS_HSI48CALIBRATION_DEFAULT;
+
+	/* Start automatic synchronization */
+	HAL_RCCEx_CRSConfig(&RCC_CRSInitStruct);
+#endif
+
+	return;
+}
+/*************************************************************
+ *
+ * LOCAL FUNCTIONS
+ *
+ *************************************************************/
+
+static void Config_HSE(void)
+{
+    OTP_ID0_t * p_otp;
+
+  /**
+   * Read HSE_Tuning from OTP
+   */
+  p_otp = (OTP_ID0_t *) OTP_Read(0);
+  if (p_otp)
+  {
+    LL_RCC_HSE_SetCapacitorTuning(p_otp->hse_tuning);
+  }
+
+  return;
 }
 
-/**
- * Returns pressure in Pa as unsigned 32 bit integer in Q24.8 format
- * (24 integer bits and 8 fractional bits)
- * Output value of "24674867" represents 24674867/256 = 96386.2 Pa = 963.862 hPa
- * Warning: the BME280_compensate_T function must have been called before calling this function
- */
-uint32_t BME280_compensate_P_int64(int32_t adc_P) {
-	int64_t var1, var2, p;
-	var1=((int64_t)t_fine)-128000;
-	var2 = var1 * var1 * (int64_t)dig_P6;
-	var2 = var2 + ((var1*(int64_t)dig_P5)<<17);
-	var2 = var2 + (((int64_t)dig_P4)<<35);
-	var1 = ((var1 * var1 * (int64_t)dig_P3)>>8) + ((var1 * (int64_t)dig_P2)<<12);
-	var1 = (((((int64_t)1)<<47)+var1))*((int64_t)dig_P1)>>33;
-	if(var1 == 0) {
-		return 0; // avoid exception caused by division by 0
+
+static void Reset_Device( void )
+{
+#if ( CFG_HW_RESET_BY_FW == 1 )
+	Reset_BackupDomain();
+
+	Reset_IPCC();
+#endif
+
+	return;
+}
+
+static void Reset_IPCC( void )
+{
+	LL_AHB3_GRP1_EnableClock(LL_AHB3_GRP1_PERIPH_IPCC);
+
+	LL_C1_IPCC_ClearFlag_CHx(
+			IPCC,
+			LL_IPCC_CHANNEL_1 | LL_IPCC_CHANNEL_2 | LL_IPCC_CHANNEL_3 | LL_IPCC_CHANNEL_4
+			| LL_IPCC_CHANNEL_5 | LL_IPCC_CHANNEL_6);
+
+	LL_C2_IPCC_ClearFlag_CHx(
+			IPCC,
+			LL_IPCC_CHANNEL_1 | LL_IPCC_CHANNEL_2 | LL_IPCC_CHANNEL_3 | LL_IPCC_CHANNEL_4
+			| LL_IPCC_CHANNEL_5 | LL_IPCC_CHANNEL_6);
+
+	LL_C1_IPCC_DisableTransmitChannel(
+			IPCC,
+			LL_IPCC_CHANNEL_1 | LL_IPCC_CHANNEL_2 | LL_IPCC_CHANNEL_3 | LL_IPCC_CHANNEL_4
+			| LL_IPCC_CHANNEL_5 | LL_IPCC_CHANNEL_6);
+
+	LL_C2_IPCC_DisableTransmitChannel(
+			IPCC,
+			LL_IPCC_CHANNEL_1 | LL_IPCC_CHANNEL_2 | LL_IPCC_CHANNEL_3 | LL_IPCC_CHANNEL_4
+			| LL_IPCC_CHANNEL_5 | LL_IPCC_CHANNEL_6);
+
+	LL_C1_IPCC_DisableReceiveChannel(
+			IPCC,
+			LL_IPCC_CHANNEL_1 | LL_IPCC_CHANNEL_2 | LL_IPCC_CHANNEL_3 | LL_IPCC_CHANNEL_4
+			| LL_IPCC_CHANNEL_5 | LL_IPCC_CHANNEL_6);
+
+	LL_C2_IPCC_DisableReceiveChannel(
+			IPCC,
+			LL_IPCC_CHANNEL_1 | LL_IPCC_CHANNEL_2 | LL_IPCC_CHANNEL_3 | LL_IPCC_CHANNEL_4
+			| LL_IPCC_CHANNEL_5 | LL_IPCC_CHANNEL_6);
+
+	return;
+}
+
+static void Reset_BackupDomain( void )
+{
+	if ((LL_RCC_IsActiveFlag_PINRST() != FALSE) && (LL_RCC_IsActiveFlag_SFTRST() == FALSE))
+	{
+		HAL_PWR_EnableBkUpAccess(); /**< Enable access to the RTC registers */
+
+		/**
+		 *  Write twice the value to flush the APB-AHB bridge
+		 *  This bit shall be written in the register before writing the next one
+		 */
+		HAL_PWR_EnableBkUpAccess();
+
+		__HAL_RCC_BACKUPRESET_FORCE();
+		__HAL_RCC_BACKUPRESET_RELEASE();
 	}
-	p = 1048576-adc_P;
-	p = (((p<<31)-var2)*3125)/var1;
-	var1 = (((int64_t)dig_P9) * (p>>13) * (p>>13)) >> 25;
-	var2 = (((int64_t)dig_P8) * p) >> 19;
-	p = ((p + var1 + var2) >> 8) + (((int64_t)dig_P7)<<4);
-	return (uint32_t)p;
+
+	return;
+}
+
+static void Init_Exti( void )
+{
+  /**< Disable all wakeup interrupt on CPU1  except IPCC(36), HSEM(38) */
+  LL_EXTI_DisableIT_0_31(~0);
+  LL_EXTI_DisableIT_32_63( (~0) & (~(LL_EXTI_LINE_36 | LL_EXTI_LINE_38)) );
+
+  return;
 }
 
 /*************************************************************
@@ -592,7 +668,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET); // Turn on Red LED
+	HAL_GPIO_WritePin(LD_Blue_Port, LD_Blue_Pin, GPIO_PIN_SET); // Turn on Red LED
 	while(1);
   /* USER CODE END Error_Handler_Debug */
 }
