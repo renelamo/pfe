@@ -137,7 +137,7 @@ int main(void)
   }
 
   bufI2C[0] = 0xF4; // "ctrl_meas" register
-  bufI2C[1] = 0b001 << 5 | 0b11; // oversampling = 1 for temperature, normal mode
+  bufI2C[1] = 0b001 << 5 | 0b001 << 2 | 0b11; // oversampling = 1 for temperature & for pressure, normal mode
   bufI2C[2] = 0b100 << 5; // 1 measure every 500ms
   HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 3, HAL_MAX_DELAY); //send 3 bytes
 
