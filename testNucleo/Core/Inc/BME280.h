@@ -34,8 +34,9 @@ struct BME280_data_t {
 
 int32_t BME280_compensate_T(int32_t);
 uint32_t BME280_compensate_P_int64(int32_t);
+uint32_t BME280_compensate_H_int32(int32_t);
 void BME280_get_compensation_data(void);
-void BME280_init(uint8_t ossr_t, uint8_t ossr_p, uint8_t mode, uint8_t period);
+void BME280_init(uint8_t ossr_t, uint8_t ossr_p, uint8_t ossr_h, uint8_t mode, uint8_t period);
 void BME280_get_measurements(struct BME280_data_t*);
 
 #endif /* INC_BME280_H_ */

@@ -119,7 +119,8 @@ int main(void)
   MX_RF_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-  BME280_init(BME280_OVERSAMPLING_1, BME280_OVERSAMPLING_1, BME280_NORMAL_MODE, BME280_RATE_500_MS);
+  BME280_init(BME280_OVERSAMPLING_1, BME280_OVERSAMPLING_1, BME280_OVERSAMPLING_1,
+		  BME280_NORMAL_MODE, BME280_RATE_500_MS); //TODO: try forced mode
 
   strcpy((char*)bufUart, "INIT COMPLETED\r\n");
   HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
@@ -158,6 +159,8 @@ int main(void)
 	  sprintf((char*)bufUart, "T=%.2f °C\r\n", BME_data.T);
 	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
 	  sprintf((char*)bufUart, "P=%.3f hPa\r\n", BME_data.P);
+	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
+	  sprintf((char*)bufUart, "H=%.3f %%\r\n", BME_data.H);
 	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
 
 	  if(BME_data.T < 25) { // if T < 25°C
