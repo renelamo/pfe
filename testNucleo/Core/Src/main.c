@@ -31,6 +31,8 @@
 #include "ble_gap_aci.h"
 #include "ble_gatt_aci.h"
 #include "BME280.h"
+#include "ble_hci_le.h"
+#include "stm32_seq.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -124,10 +126,11 @@ int main(void)
   /* USER CODE END 2 */
 
   /* Init code for STM32_WPAN */
-  //APPE_Init(); //FIXME: breaks timers, notably for HAL_Delay & I2C comm.
+  APPE_Init();
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 #if 0
+  hci_reset();
   aci_gatt_init();
   uint16_t* serviceh = NULL;
   uint16_t* nameh = NULL;
@@ -145,6 +148,8 @@ int main(void)
 #endif
   while (1)
   {
+	  UTIL_SEQ_Run(UTIL_SEQ_DEFAULT);
+#if 1
 	  HAL_Delay(500);
 
 	  struct BME280_data_t BME_data;
@@ -161,6 +166,7 @@ int main(void)
 		  HAL_GPIO_WritePin(LD_Red_Port, LD_Red_Pin, GPIO_PIN_RESET);
 	  }
 	  HAL_GPIO_TogglePin(LD_Green_Port, LD_Green_Pin);
+#endif
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

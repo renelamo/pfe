@@ -696,10 +696,12 @@ static void Ble_Hci_Gap_Gatt_Init(void){
   /**
    * Initialize whitelist
    */
+  /*
    if (BleApplicationContext.BleApplicationContext_legacy.bleSecurityParam.bonding_mode)
    {
      aci_gap_configure_whitelist();
    }
+   */
 }
 
 static void Adv_Request(APP_BLE_ConnStatus_t New_Status)

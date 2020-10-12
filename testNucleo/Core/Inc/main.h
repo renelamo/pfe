@@ -42,7 +42,7 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-static I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c1;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -62,8 +62,8 @@ void Error_Handler(void);
 #define B1_GPIO_Port GPIOC
 #define LD_Green_Pin GPIO_PIN_0
 #define LD_Green_Port GPIOB
-#define LD_Red_Pin GPIO_PIN_1
-#define LD_Red_Port GPIOB
+#define LD_Blue_Pin GPIO_PIN_1
+#define LD_Blue_Port GPIOB
 #define JTMS_Pin GPIO_PIN_13
 #define JTMS_GPIO_Port GPIOA
 #define JTCK_Pin GPIO_PIN_14
@@ -74,8 +74,8 @@ void Error_Handler(void);
 #define B3_GPIO_Port GPIOD
 #define JTDO_Pin GPIO_PIN_3
 #define JTDO_GPIO_Port GPIOB
-#define LD_Blue_Pin GPIO_PIN_5
-#define LD_Blue_Port GPIOB
+#define LD_Red_Pin GPIO_PIN_5
+#define LD_Red_Port GPIOB
 #define STLINK_RX_Pin GPIO_PIN_6
 #define STLINK_RX_GPIO_Port GPIOB
 #define STLINK_TX_Pin GPIO_PIN_7

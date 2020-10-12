@@ -81,13 +81,20 @@ void BME280_get_compensation_data(void) {
 }
 
 void BME280_init(uint8_t ossr_t, uint8_t ossr_p, uint8_t mode, uint8_t period){
-	 bufI2C[0] = 0xD0; // "id" register
-	  HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //send 1 byte
-	  HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //receive 1 byte
-
-	  if(bufI2C[0] != 0x60){ // if the device id does not match expected
-	  	  Error_Handler();
-	  }
+	HAL_StatusTypeDef ret;
+	bufI2C[0] = 0xD0; // "id" register
+	ret = HAL_I2C_Master_Transmit(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //send 1 byte
+	if(ret != HAL_OK){
+		Error_Handler();
+	}
+	ret = HAL_I2C_Master_Receive(&hi2c1, BME_ADDR, bufI2C, 1, HAL_MAX_DELAY); //receive 1 byte
+	if(ret != HAL_OK){
+		Error_Handler();
+	}
+	uint8_t debug = bufI2C[0];
+	if(bufI2C[0] != 0x60){ // if the device id does not match expected
+		Error_Handler();
+	}
 
 	  uint8_t mask3 = 0b111;
 	  uint8_t mask2 = 0b11;
