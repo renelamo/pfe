@@ -130,23 +130,6 @@ int main(void)
   APPE_Init();
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-#if 0
-  hci_reset();
-  aci_gatt_init();
-  uint16_t* serviceh = NULL;
-  uint16_t* nameh = NULL;
-  uint16_t* appearanceh = NULL;
-  aci_gap_init(0x02, 0, 4, serviceh, nameh, appearanceh);
-  aci_gap_set_non_connectable(0x03, 0x01);
-  char* localName = "BROADCASTER";
-  char* services = {0x0};
-  aci_gap_set_discoverable(0x03, 0x0020, 0x0030, 0x01, NULL,
-		  strlen(localName), (uint8_t*)localName,
-		  1, (uint8_t*)services,
-		  0xffff, 0xffff);
-  char* broadcastedData = "HELLOWORLD";
-  aci_gap_set_broadcast_mode(0x00A0, 0x00A1, 0x03, 0x01, strlen(broadcastedData), (uint8_t*)broadcastedData, 0, NULL);
-#endif
   while (1)
   {
 	  UTIL_SEQ_Run(UTIL_SEQ_DEFAULT);

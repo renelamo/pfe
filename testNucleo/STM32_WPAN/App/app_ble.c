@@ -246,7 +246,7 @@ static void Ble_Tl_Init( void );
 static void Ble_Hci_Gap_Gatt_Init(void);
 static const uint8_t* BleGetBdAddress( void );
 static void Adv_Request( APP_BLE_ConnStatus_t New_Status );
-static void Adv_Cancel( void );
+//static void Adv_Cancel( void );
 #if(L2CAP_REQUEST_NEW_CONN_PARAM != 0)
 static void BLE_SVC_L2CAP_Conn_Update(uint16_t Connection_Handle);
 static void Connection_Interval_Update_Req( void );
@@ -308,8 +308,34 @@ void APP_BLE_Init( void )
   /**
    * Initialization of HCI & GATT & GAP layer
    */
-  Ble_Hci_Gap_Gatt_Init();
+  //Ble_Hci_Gap_Gatt_Init();
 
+  /**
+   * Initialize HCI layer
+   */
+  /*HCI Reset to synchronise BLE Stack*/
+  hci_reset();
+
+
+#if 0
+  uint32_t srd_bd_addr[] = {0x5005, 0x50055005};
+  aci_hal_write_config_data( CONFIG_DATA_RANDOM_ADDRESS_OFFSET, CONFIG_DATA_RANDOM_ADDRESS_LEN, (uint8_t*)srd_bd_addr );
+
+  //aci_hal_write_config_data(CONFIG_DATA_PUBADDR_OFFSET, CONFIG_DATA_PUBADDR_LEN, (uint8_t*) bd_addr);
+
+  /**
+   * Initialize GATT interface
+   */
+  aci_gatt_init();
+
+  /**
+   * Initialize GAP interface
+   */
+  role = 2;
+  aci_gap_init(role, 0,
+                CFG_GAP_DEVICE_NAME_LENGTH,
+                 &gap_service_handle, &gap_dev_name_char_handle, &gap_appearance_char_handle);
+#endif
   /**
    * Initialization of the BLE Services
    */
@@ -323,12 +349,12 @@ void APP_BLE_Init( void )
   /**
    * From here, all initialization are BLE application specific
    */
-  UTIL_SEQ_RegTask( 1<<CFG_TASK_ADV_CANCEL_ID, UTIL_SEQ_RFU, Adv_Cancel);
+  //UTIL_SEQ_RegTask( 1<<CFG_TASK_ADV_CANCEL_ID, UTIL_SEQ_RFU, Adv_Cancel);
   /**
    * Initialization of ADV - Ad Manufacturer Element - Support OTA Bit Mask
    */
 #if(RADIO_ACTIVITY_EVENT != 0)
-  aci_hal_set_radio_activity_mask(0x0006);
+  aci_hal_set_radio_activity_mask(0x0002);
 #endif
 
 #if (L2CAP_REQUEST_NEW_CONN_PARAM != 0 )
@@ -338,7 +364,7 @@ void APP_BLE_Init( void )
   /**
    * Initialize Custom Template Application
    */
-  Custom_APP_Init();
+  //Custom_APP_Init();
 
   /**
    * Make device discoverable
@@ -346,13 +372,16 @@ void APP_BLE_Init( void )
   BleApplicationContext.BleApplicationContext_legacy.advtServUUID[0] = NULL;
   BleApplicationContext.BleApplicationContext_legacy.advtServUUIDlen = 0;
 
-  /**
-   * Start to Advertise to be connected by a Client
-   */
-   Adv_Request(APP_BLE_FAST_ADV);
-
 /* USER CODE BEGIN APP_BLE_Init_2 */
-
+  uint8_t data[] = {0x05, 0x08, 0x53, 0x55, 0x55, 0x53,
+		  	  	  	0x07, 0x16, 0x02, 0x00, 0xDE, 0xAD, 0xBE, 0xEF,
+  	  	  	  	  	0x07, 0x16, 0x02, 0x01, 0xB0, 0x00, 0xB1, 0xE5};
+  hci_le_set_advertising_data(21, data);
+  //hci_le_set_advertising_data(4, (const uint8_t*)"SUUS");
+  uint8_t peer[6];
+  memset(peer, 0, 6);
+  hci_le_set_advertising_parameters(0x00A0, 0x00A0, 0x03, 0x00, 0x00, peer, 0b111, 0x00);
+  hci_le_set_advertise_enable(0x01);
 /* USER CODE END APP_BLE_Init_2 */
   return;
 }
@@ -788,37 +817,6 @@ const uint8_t* BleGetBdAddress( void )
  *SPECIFIC FUNCTIONS FOR CUSTOM
  *
  *************************************************************/
-static void Adv_Cancel( void )
-{
-/* USER CODE BEGIN Adv_Cancel_1 */
-
-/* USER CODE END Adv_Cancel_1 */
-
-  if (BleApplicationContext.Device_Connection_Status != APP_BLE_CONNECTED_SERVER)
-
-  {
-
-    tBleStatus result = 0x00;
-
-    result = aci_gap_set_non_discoverable();
-
-    BleApplicationContext.Device_Connection_Status = APP_BLE_IDLE;
-    if (result == BLE_STATUS_SUCCESS)
-    {
-      APP_DBG_MSG("  \r\n\r");APP_DBG_MSG("** STOP ADVERTISING **  \r\n\r");
-    }
-    else
-    {
-      APP_DBG_MSG("** STOP ADVERTISING **  Failed \r\n\r");
-    }
-
-  }
-
-/* USER CODE BEGIN Adv_Cancel_2 */
-
-/* USER CODE END Adv_Cancel_2 */
-  return;
-}
 
 #if(L2CAP_REQUEST_NEW_CONN_PARAM != 0)
 void BLE_SVC_L2CAP_Conn_Update(uint16_t Connection_Handle)
