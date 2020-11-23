@@ -56,8 +56,8 @@ testNucleo.bin \
 all: testNucleo.elf secondary-outputs
 
 # Tool invocations
-testNucleo.elf: $(OBJS) $(USER_OBJS) D:\tmp\pfe\testNucleo\STM32WB55RGVX_FLASH.ld
-	arm-none-eabi-gcc -o "testNucleo.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\tmp\pfe\testNucleo\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="testNucleo.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+testNucleo.elf: $(OBJS) $(USER_OBJS) D:\PFE\pfe\testNucleo\STM32WB55RGVX_FLASH.ld
+	arm-none-eabi-gcc -o "testNucleo.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\PFE\pfe\testNucleo\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="testNucleo.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

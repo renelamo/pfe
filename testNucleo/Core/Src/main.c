@@ -112,9 +112,6 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_USART1_UART_Init();
-  MX_USB_PCD_Init();
   MX_I2C1_Init();
   MX_RF_Init();
   MX_RTC_Init();
@@ -122,8 +119,6 @@ int main(void)
   BME280_init(BME280_OVERSAMPLING_1, BME280_OVERSAMPLING_1, BME280_OVERSAMPLING_1,
 		  BME280_NORMAL_MODE, BME280_RATE_500_MS); //TODO: try forced mode
 
-  strcpy((char*)bufUart, "INIT COMPLETED\r\n");
-  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
   /* USER CODE END 2 */
 
   /* Init code for STM32_WPAN */
@@ -133,26 +128,7 @@ int main(void)
   while (1)
   {
 	  UTIL_SEQ_Run(UTIL_SEQ_DEFAULT);
-#if 1
-	  HAL_Delay(500);
 
-	  struct BME280_data_t BME_data;
-	  BME280_get_measurements(&BME_data);
-
-	  sprintf((char*)bufUart, "T=%.2f °C\r\n", BME_data.T);
-	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
-	  sprintf((char*)bufUart, "P=%.3f hPa\r\n", BME_data.P);
-	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
-	  sprintf((char*)bufUart, "H=%.3f %%\r\n", BME_data.H);
-	  HAL_UART_Transmit(&huart1, bufUart, strlen((char*)bufUart), HAL_MAX_DELAY);
-
-	  if(BME_data.T < 25) { // if T < 25°C
-		  HAL_GPIO_WritePin(LD_Red_Port, LD_Red_Pin, GPIO_PIN_SET);
-	  } else {
-		  HAL_GPIO_WritePin(LD_Red_Port, LD_Red_Pin, GPIO_PIN_RESET);
-	  }
-	  HAL_GPIO_TogglePin(LD_Green_Port, LD_Green_Pin);
-#endif
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

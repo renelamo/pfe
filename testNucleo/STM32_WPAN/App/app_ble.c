@@ -37,7 +37,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "BME280.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -371,6 +371,9 @@ void APP_BLE_Init( void )
    */
   BleApplicationContext.BleApplicationContext_legacy.advtServUUID[0] = NULL;
   BleApplicationContext.BleApplicationContext_legacy.advtServUUIDlen = 0;
+
+  struct BME280_data_t BME_data;
+  BME280_get_measurements(&BME_data);
 
 /* USER CODE BEGIN APP_BLE_Init_2 */
   uint8_t data[] = {0x05, 0x08, 0x53, 0x55, 0x55, 0x53,
