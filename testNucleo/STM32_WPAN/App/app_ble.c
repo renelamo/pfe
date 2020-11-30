@@ -377,9 +377,10 @@ void APP_BLE_Init( void )
 
 /* USER CODE BEGIN APP_BLE_Init_2 */
   uint8_t data[] = {0x05, 0x08, 0x53, 0x55, 0x55, 0x53,
-		  	  	  	0x07, 0x16, 0x02, 0x00, 0xDE, 0xAD, 0xBE, 0xEF,
-  	  	  	  	  	0x07, 0x16, 0x02, 0x01, 0xB0, 0x00, 0xB1, 0xE5};
-  hci_le_set_advertising_data(21, data);
+		  	  	  	sizeof(float)+3, 0x16, 0x02, 0x00};
+  //*(data+9) = BME_data.T;
+  memcpy(data+10, &(BME_data.T), sizeof(float));
+  hci_le_set_advertising_data(9 + sizeof(float), data);
   //hci_le_set_advertising_data(4, (const uint8_t*)"SUUS");
   uint8_t peer[6];
   memset(peer, 0, 6);

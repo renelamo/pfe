@@ -27,8 +27,6 @@
 #include "tl.h"
 #include "stm32_seq.h"
 #include "shci_tl.h"
-#include "stm32_lpm.h"
-#include "app_debug.h"
 
 /* Private includes -----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -81,7 +79,7 @@ void APPE_Init( void )
   HW_TS_Init(hw_ts_InitMode_Full, &hrtc); /**< Initialize the TimerServer */
 
 /* USER CODE BEGIN APPE_Init_1 */
-  APPD_Init(); // enable debug
+  //APPD_Init(); // enable debug
 /* USER CODE END APPE_Init_1 */
   appe_Tl_Init();	/* Initialize all transport layers */
 
@@ -122,7 +120,7 @@ static void SystemPower_Config(void)
   LL_RCC_SetClkAfterWakeFromStop(LL_RCC_STOP_WAKEUPCLOCK_HSI);
 
   /* Initialize low power manager */
-  UTIL_LPM_Init();
+  //UTIL_LPM_Init();
   /* Initialize the CPU2 reset value before starting CPU2 with C2BOOT */
   LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
 
@@ -179,11 +177,12 @@ static void APPE_SysStatusNot( SHCI_TL_CmdStatus_t status )
 static void APPE_SysUserEvtRx( void * pPayload )
 {
   UNUSED(pPayload);
+
   /* Traces channel initialization */
-  APPD_EnableCPU2( );
+  //APPD_EnableCPU2( );
 
   APP_BLE_Init( );
-  UTIL_LPM_SetOffMode(1U << CFG_LPM_APP, UTIL_LPM_ENABLE);
+  //UTIL_LPM_SetOffMode(1U << CFG_LPM_APP, UTIL_LPM_ENABLE);
   return;
 }
 
