@@ -309,6 +309,7 @@ void APP_BLE_Init( void )
   /*HCI Reset to synchronise BLE Stack*/
   hci_reset();
 
+
   /**
    * Initialization of the BLE Services
    */
@@ -349,15 +350,22 @@ void APP_BLE_Init( void )
   BME280_get_measurements(&BME_data);
 
 /* USER CODE BEGIN APP_BLE_Init_2 */
-  uint8_t data[] = {0x05, 0x08, 0x53, 0x55, 0x55, 0x53,
-		  	  	  	sizeof(float)+3, 0x16, 0x02, 0x00};
-  memcpy(data+10, &(BME_data.T), sizeof(float));
-  hci_le_set_advertising_data(9 + sizeof(float), data);
+  //uint8_t data[] = {0x05, 0x08, 0x53, 0x55, 0x55, 0x53, // Name = "SUUS"
+  uint8_t data[] = {0x04, 0x08, 0x50, 0x46, 0x45, // Name = "PFE"
+		  	  	  	sizeof(float)+3, 0x16, 0x02, 0x00}; // Data with ID 0020 has size sizeof(float)
+  //memcpy(data+10, &(BME_data.T), sizeof(float));
+  //hci_le_set_advertising_data(9 + sizeof(float), data);
+  memcpy(data+9, &(BME_data.T), sizeof(float));
+  hci_le_set_advertising_data(8 + sizeof(float), data);
   //hci_le_set_advertising_data(4, (const uint8_t*)"SUUS");
   uint8_t peer[6];
   memset(peer, 0, 6);
-  hci_le_set_advertising_parameters(0x00A0, 0x00A0, 0x03, 0x00, 0x00, peer, 0b111, 0x00);
-  hci_le_set_advertise_enable(0x01);
+  //hci_le_set_advertising_parameters(0x00A0, 0x0A00, ADV_NONCONN_IND, 0x01, PUBLIC_ADDR, -1, 0b111, 0x03);
+  //hci_le_set_advertise_enable(0x01);
+
+  aci_gatt_init();
+    aci_gap_init(0x02, 0x00, 0x00, 0x00, 0x00, 0x00);
+    aci_gap_set_broadcast_mode(0x0800, 0x0800, 0x03, 0x00, 8+sizeof(float), data, 0x00, 0x00);
 /* USER CODE END APP_BLE_Init_2 */
   return;
 }

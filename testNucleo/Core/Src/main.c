@@ -626,6 +626,12 @@ void HAL_Delay(uint32_t Delay)
     __WFI( );
   }
 }
+
+void hci_le_advertising_report_event( uint8_t Num_Reports,
+                                      const Advertising_Report_t* Advertising_Report );
+{
+	return;
+}
 /* USER CODE END 4 */
 
 /**
